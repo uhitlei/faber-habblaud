@@ -27,6 +27,7 @@ import { SHELL_WAIT_TOOL, SPECIAL, type ShellOutcome } from '../../shared/activi
 import { nameKey, type AppearanceParts } from '../../shared/appearance';
 import { DemoSimulator } from '../../shared/demo/simulator';
 import { describeGitHubEvent, githubEventKey, RoomEffects, type GitHubEvent } from '../../shared/github';
+import type { FaberRoomInfo } from '../../shared/faber';
 import { hash32 } from '../../shared/hash';
 import { applyPermission } from '../permissions/registry';
 import type { NameStore, StoredCharacter } from './names';
@@ -77,6 +78,8 @@ export interface OfficeDeps {
   updates?: () => UpdateStatus;
   /** Terminais interativos (PtyManager): estado do recurso e os abertos. */
   ptys?: () => { status: PtyStatus; list: PtyInfo[] };
+  /** A fábrica Faber na sala do caminho dado (sources/faber/rooms.ts), posta em RoomInfo.faber. Ausente = desligado. */
+  faber?: (roomPath: string) => FaberRoomInfo | undefined;
   now?: () => number;
 }
 
@@ -155,7 +158,7 @@ export interface CommitResult {
   notices: Notice[];
 }
 
-type NoticeKind = 'arrive' | 'room' | 'wait' | 'deliver' | 'done' | 'leave' | 'shell' | 'shellDone' | 'github' | 'character';
+type NoticeKind = 'arrive' | 'room' | 'wait' | 'deliver' | 'done' | 'leave' | 'shell' | 'shellDone' | 'github' | 'character' | 'faber';
 
 /** Pergunta ainda sem resposta (o balão dela já diz que o agente espera você). */
 function isOpenQuestion(a: Activity | undefined): boolean {
@@ -287,6 +290,17 @@ export class Office {
   /** Pasta do projeto da sala (cwd original, sem normalizar). */
   roomPath(roomId: string): string | undefined {
     return this.rooms.get(roomId)?.path;
+  }
+
+  /** Salas reais abertas (sem as do demo): id e caminho. */
+  roomRefs(): { id: string; path: string }[] {
+    return [...this.rooms].map(([id, r]) => ({ id, path: r.path }));
+  }
+
+  /** Aviso da fábrica Faber numa sala (demanda esperando o Owner, bloqueada). `key` deduplica. */
+  faberNotice(roomId: string, level: NoticeLevel, text: string, key: string): void {
+    if (!this.rooms.has(roomId)) return;
+    this.notice('faber', roomId, level, text, roomId, { dedupeKey: `faber|${key}` });
   }
 
   roomName(roomId: string): string {
@@ -967,6 +981,8 @@ export class Office {
     for (const room of rooms) {
       const effect = this.effects.get(room.id, now) ?? this.demoSnap?.rooms.find((r) => r.id === room.id)?.effect;
       if (effect) room.effect = { ...effect };
+      const faber = this.rooms.has(room.id) ? this.deps.faber?.(room.path) : this.demoSnap?.rooms.find((r) => r.id === room.id)?.faber;
+      if (faber) room.faber = faber;
     }
     const perms = this.deps.permissions?.();
     const real = [...this.agents.values()].map((r) => applyPermission(cloneAgent(r.info), perms?.get(r.info.id)));
@@ -1083,7 +1099,7 @@ export class Office {
       for (const [nk, t] of this.noticeAt) if (now - t > Math.max(NOTICE_DEDUPE_MS, SHELL_NOTICE_DEDUPE_MS)) this.noticeAt.delete(nk);
     }
     const n: Notice = { id: `n-${now.toString(36)}-${++this.seq}`, level, text, at: now };
-    if (kind !== 'room') n.agentId = key;
+    if (kind !== 'room' && kind !== 'faber') n.agentId = key;
     if (roomId) n.roomId = roomId;
     this.pendingNotices.push(n);
   }

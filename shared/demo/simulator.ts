@@ -13,6 +13,7 @@
 // `codexRng`), sem chamadas a mais no sorteio principal; ainda assim o escritório de cada semente mudou em relação
 // às versões sem o Codex (a 2ª sessão muda de sala, e os agentes do Codex não sorteiam custo). Vale sempre: a mesma
 // semente gera o mesmo escritório.
+import { demoFaber } from './faber';
 import type { AccountInfo, AccountUsage, Activity, AgentInfo, FeedItem, Notice, OfficeSnapshot, PermissionDecision, RoomInfo, ShellJob, TaskItem } from '../types';
 import { describePrompt, describeShellJob, describeTool, SHELL_DONE_TOOL, SHELL_WAIT_TOOL, SPECIAL, type ActivityDescription, type ShellOutcome } from '../activity';
 import { answerSummary, ASK_TOOL, checkAnswers } from '../answers';
@@ -353,7 +354,8 @@ export class DemoSimulator {
       serverTime: now,
       rooms: [...this.rooms.values()].map((r) => {
         const effect = this.effects.get(r.id, now);
-        return effect ? { ...r, effect: { ...effect } } : { ...r };
+        const faber = demoFaber(r.name, now);
+        return { ...r, ...(effect ? { effect: { ...effect } } : {}), ...(faber ? { faber } : {}) };
       }),
       agents: [...this.agents.values()].map((a) => structuredCloneAgent(a.info)),
       accounts: [

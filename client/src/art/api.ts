@@ -116,6 +116,11 @@ export interface Sprite {
   /** Ponto de ancoragem dentro do sprite (px). Ver convenções em FurnitureDef / characterSprite. */
   ax: number;
   ay: number;
+  /**
+   * (Aditivo) Pixels do canvas por px de mundo. Ausente = 1. Com escala, `ax`/`ay` continuam em px de mundo e o
+   * sprite é desenhado com tamanho de destino canvas.width/scale × canvas.height/scale (ver drawSprite no mundo).
+   */
+  scale?: number;
   rects?: Partial<Record<SpriteRectName, Rect>>;
 }
 
@@ -135,7 +140,13 @@ export interface CharacterFrameRequest {
   seated?: boolean;
   /** Acessório sazonal; ausente mantém a aparência original. */
   costume?: 'santa' | 'witch' | 'pumpkin' | 'vampire';
+  /** (Aditivo) Estilo do personagem: pixel art ('classic', o padrão) ou traço suave ('v2', character2/). */
+  style?: CharacterStyle;
+  /** (Aditivo) Só no estilo 'v2': pixels do canvas por px de mundo (zoom × densidade da tela). Ausente = 2. */
+  scale?: number;
 }
+
+export type CharacterStyle = 'classic' | 'v2';
 
 export type FurnitureKind =
   // --- escritório (salas de projeto)
@@ -373,5 +384,5 @@ export interface ArtModule {
    */
   footballLance?(t: number, seed: number): { lance: number; progress: number; right: boolean; period: number; goalAt: number };
   /** Avatar (cabeça + ombros) ampliado para a UI. `parts`: peças do personagem editado (ver AgentInfo.parts). */
-  avatarCanvas(seed: number, opts?: { look?: 'f' | 'm'; sub?: boolean; scale?: number; parts?: AppearanceParts }): HTMLCanvasElement;
+  avatarCanvas(seed: number, opts?: { look?: 'f' | 'm'; sub?: boolean; scale?: number; parts?: AppearanceParts; style?: CharacterStyle }): HTMLCanvasElement;
 }

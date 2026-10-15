@@ -1,7 +1,7 @@
 // Desenho do mundo por frame: camada externa -> pisos -> paredes/itens de parede -> entidades
 // ordenadas por profundidade -> luz/escuridão -> ícones. A passada em espaço de tela (texto
 // nítido) fica em overlay.ts.
-import { TILE, type ArtModule, type CharacterFrameRequest, type IconName, type ScreenMode, type Sprite } from '../../art/api';
+import { TILE, type ArtModule, type CharacterFrameRequest, type CharacterStyle, type IconName, type ScreenMode, type Sprite } from '../../art/api';
 import type { SeasonalTheme, WorldOptions } from '../api';
 import type { WorldAssets } from '../assets';
 import type { Camera } from '../camera';
@@ -331,6 +331,8 @@ export class Renderer {
     ctx.fillRect(0, 0, W, H);
     const { scale, ox, oy } = camera.transform();
     ctx.setTransform(scale, 0, 0, scale, ox, oy);
+    this.charStyle = opts.characters ?? 'v2';
+    this.pxScale = scale;
     const vx0 = -ox / scale;
     const vy0 = -oy / scale;
     const vx1 = vx0 + W / scale;
@@ -845,8 +847,8 @@ export class Renderer {
     if (sprite) {
       const sx = x - sprite.ax;
       const sy = y - sprite.ay;
-      ctx.drawImage(sprite.canvas, sx, sy);
-      const b = opaqueBounds(sprite.canvas);
+      this.drawSprite(sprite, x, y);
+      const b = this.spriteBounds(sprite);
       head.bx = sx + b.x;
       head.by = sy + b.y;
       head.bw = b.w;
@@ -920,7 +922,30 @@ export class Renderer {
     const count = Math.max(1, art.poseFrameCount(req.pose) || 1);
     const dur = Math.max(30, art.poseFrameDuration(req.pose) || 500);
     req.frame = Math.floor(animT / dur) % count;
+    req.style = this.charStyle;
+    req.scale = this.pxScale;
     return art.characterSprite(req);
+  }
+
+  /** Desenha um sprite com a âncora em (x, y); sprites com escala (personagens v2) saem no tamanho de mundo, suavizados. */
+  private drawSprite(s: Sprite, x: number, y: number): void {
+    const k = s.scale ?? 1;
+    if (k === 1) {
+      this.ctx.drawImage(s.canvas, x - s.ax, y - s.ay);
+      return;
+    }
+    const { ctx } = this;
+    ctx.imageSmoothingEnabled = true;
+    ctx.imageSmoothingQuality = 'high';
+    ctx.drawImage(s.canvas, x - s.ax, y - s.ay, s.canvas.width / k, s.canvas.height / k);
+    ctx.imageSmoothingEnabled = false;
+  }
+
+  /** Caixa opaca do sprite em px de mundo (relativa ao canto do sprite). */
+  private spriteBounds(s: Sprite): { x: number; y: number; w: number; h: number } {
+    const b = opaqueBounds(s.canvas);
+    const k = s.scale ?? 1;
+    return k === 1 ? b : { x: b.x / k, y: b.y / k, w: b.w / k, h: b.h / k };
   }
 
   /**
@@ -1039,7 +1064,7 @@ export class Renderer {
       ctx.rect(gx, gy, gw, gh);
       ctx.clip();
       ctx.globalAlpha = 0.8 * ch.alpha;
-      ctx.drawImage(s.canvas, Math.round(gx + gw / 2 - s.ax), Math.round(gy - 6));
+      this.drawSprite(s, Math.round(gx + gw / 2), Math.round(gy - 6) + s.ay);
       ctx.globalAlpha = 0.28;
       ctx.fillStyle = '#cfe6f2';
       ctx.fillRect(gx, gy, gw, gh);
@@ -1048,6 +1073,9 @@ export class Renderer {
     }
   }
 
+  /** Estilo dos personagens e pixels de tela por px de mundo no quadro atual (ver frame). */
+  private charStyle: CharacterStyle = 'v2';
+  private pxScale = 1;
   private req: CharacterFrameRequest = {
     appearance: undefined as unknown as CharacterFrameRequest['appearance'],
     dir: 'down',

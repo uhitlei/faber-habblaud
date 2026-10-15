@@ -4,6 +4,8 @@
 import '@fontsource/pixelify-sans/400.css';
 import * as art from './index';
 import { pixelText, pixelTextWidth } from './pixelfont';
+import { drawCharacterV2, poseOf, V2_DURATION, V2_FRAMES } from './character2/render';
+import type { AppearanceParts } from '../../../shared/appearance';
 import {
   FURNITURE,
   TILE,
@@ -886,22 +888,237 @@ function avatars(): void {
   }
 }
 
+// ------------------------------------------------------------------ personagens v2 (protótipo)
+
+/** Canvas em resolução de tela (sem pixelar): 1 unidade = 1 px de mundo, exibido `scale`× em px CSS. */
+function hiCanvas(parent: HTMLElement, w: number, h: number, scale: number, paint: Painter, bg = '#e9ecf1'): void {
+  const dpr = Math.min(3, window.devicePixelRatio || 1);
+  const c = document.createElement('canvas');
+  c.width = Math.round(w * scale * dpr);
+  c.height = Math.round(h * scale * dpr);
+  c.style.width = `${w * scale}px`;
+  c.style.height = `${h * scale}px`;
+  c.style.display = 'block';
+  const wrap = document.createElement('div');
+  wrap.className = 'scroll';
+  wrap.appendChild(c);
+  parent.appendChild(wrap);
+  const ctx = c.getContext('2d') as CanvasRenderingContext2D;
+  const k = scale * dpr;
+  // a escala é reaplicada a cada quadro: se o navegador descartar e recriar o contexto, ela volta à identidade
+  painters.push({
+    ctx,
+    w: c.width,
+    h: c.height,
+    bg,
+    paint: (g, t) => {
+      g.setTransform(k, 0, 0, k, 0, 0);
+      paint(g, t);
+      g.setTransform(1, 0, 0, 1, 0, 0);
+    },
+  });
+}
+
+interface CastMember {
+  name: string;
+  look: 'f' | 'm';
+  sub?: boolean;
+  parts: AppearanceParts;
+}
+
+const CAST: readonly CastMember[] = [
+  { name: 'Marina', look: 'f', parts: { hairStyle: 'long', hair: '#3f2c22', skin: '#eab894', topStyle: 'blouse', top: '#e47aa8', bottomStyle: 'skirt', bottom: '#2e3e5e', shoes: '#2b2b33', accessory: 'earrings', accessoryColor: '#f2c14e', eyes: '#4a2f22' } },
+  { name: 'Júlia', look: 'f', parts: { hairStyle: 'wavy', hair: '#d6ae68', skin: '#ffe2cc', topStyle: 'sweater', top: '#8d66cf', bottomStyle: 'pants', bottom: '#3f5f8c', shoes: '#ececec', accessory: 'none', eyes: '#2f5f9e' } },
+  { name: 'Beatriz', look: 'f', parts: { hairStyle: 'ponytail', hair: '#2b2530', skin: '#9a6444', topStyle: 'tshirt', top: '#36b0b0', bottomStyle: 'pants', bottom: '#2c2c35', shoes: '#d04848', accessory: 'none', accessoryColor: '#efb54a', eyes: '#2b2236' } },
+  { name: 'Lívia', look: 'f', parts: { hairStyle: 'bob', hair: '#8e3b2b', skin: '#f6cfb0', topStyle: 'jacket', top: '#2f3b55', topAccent: '#f4f4f0', bottomStyle: 'skirt', bottom: '#3d4352', shoes: '#6b4630', accessory: 'glasses', accessoryColor: '#2b2b33', eyes: '#3c7a52' } },
+  { name: 'Ana', look: 'f', parts: { hairStyle: 'curly', hair: '#3f2c22', skin: '#7a4a31', topStyle: 'hoodie', top: '#efb54a', topAccent: '#f4f4f0', bottomStyle: 'pants', bottom: '#3f5f8c', shoes: '#ececec', accessory: 'none', eyes: '#2b2236' } },
+  { name: 'Clara', look: 'f', sub: true, parts: { hairStyle: 'bun', hair: '#87593a', skin: '#f6cfb0', topStyle: 'blouse', top: '#f1efe9', bottomStyle: 'pants', bottom: '#2c3655', shoes: '#2b2b33', accessory: 'bow', accessoryColor: '#e2604f', eyes: '#5a3b22' } },
+  { name: 'Rafael', look: 'm', parts: { hairStyle: 'side_part', hair: '#3f2c22', skin: '#d69f78', topStyle: 'shirt_tie', top: '#d3e3f4', topAccent: '#c0392b', bottomStyle: 'pants', bottom: '#2e3e5e', shoes: '#2b2b33', accessory: 'none', facialHair: 'stubble', eyes: '#4a2f22' } },
+  { name: 'Diego', look: 'm', parts: { hairStyle: 'afro', hair: '#2b2530', skin: '#5a3623', topStyle: 'polo', top: '#4bab72', bottomStyle: 'pants', bottom: '#b49c72', shoes: '#6b4630', accessory: 'none', facialHair: 'none', eyes: '#2b2236' } },
+  { name: 'Thiago', look: 'm', parts: { hairStyle: 'short', hair: '#5f3c28', skin: '#eab894', topStyle: 'hoodie', top: '#3d4352', topAccent: '#f4f4f0', bottomStyle: 'pants', bottom: '#3f5f8c', shoes: '#ececec', accessory: 'glasses', accessoryColor: '#2b2b33', facialHair: 'beard', eyes: '#5a3b22' } },
+  { name: 'Henrique', look: 'm', parts: { hairStyle: 'buzz', hair: '#2b2530', skin: '#bd8560', topStyle: 'tshirt', top: '#e2604f', bottomStyle: 'shorts', bottom: '#2c2c35', shoes: '#ececec', accessory: 'headphones', accessoryColor: '#f1efe9', facialHair: 'goatee', eyes: '#2b2236' } },
+];
+
+const castAppearance = CAST.map((c, i) => art.appearanceFromSeed(1_000 + i * 31, { look: c.look, sub: c.sub, parts: c.parts }));
+
+function v2Frame(pose: Pose, t: number, offset = 0): number {
+  const p = poseOf(pose);
+  return Math.floor((t + offset) / V2_DURATION[p]) % V2_FRAMES[p];
+}
+
+/** Personagem v2 com a âncora (pés) em (x, y). */
+function drawV2(ctx: CanvasRenderingContext2D, a: (typeof castAppearance)[number], dir: Dir, pose: Pose, frame: number, x: number, y: number): void {
+  ctx.save();
+  ctx.translate(x - 12, y - 31);
+  drawCharacterV2(ctx, { appearance: a, dir, pose, frame }, { shadow: true });
+  ctx.restore();
+}
+
+/** Personagem atual (pixel art) desenhado no mesmo canvas, sem suavização. */
+function drawV1(ctx: CanvasRenderingContext2D, a: (typeof castAppearance)[number], dir: Dir, pose: Pose, frame: number, x: number, y: number, seated = false): void {
+  const s = art.characterSprite({ appearance: a, dir, pose, frame, seated });
+  ctx.imageSmoothingEnabled = false;
+  ctx.drawImage(s.canvas, x - s.ax, y - s.ay);
+}
+
+function charactersV2(): void {
+  const s = section(
+    'personagens-v2',
+    'Personagens v2 — protótipo',
+    'Desenhados com curvas no mesmo tamanho de mundo (24×34, mesma âncora): encaixam no escritório sem mexer nos móveis e ficam nítidos em qualquer zoom. Cada par: atual (pixel art) e novo.',
+  );
+  const sub = (t: string) => {
+    const h = document.createElement('p');
+    h.className = 'desc';
+    h.style.margin = '14px 0 6px';
+    h.textContent = t;
+    s.appendChild(h);
+  };
+  sub('Antes × depois, parados de frente (5×)');
+  const per = 5;
+  const cw = 52;
+  hiCanvas(s, cw * per, 40 * Math.ceil(CAST.length / per), 5, (ctx, t) => {
+    CAST.forEach((c, i) => {
+      const a = castAppearance[i];
+      const x0 = (i % per) * cw;
+      const y0 = Math.floor(i / per) * 40;
+      drawV1(ctx, a, 'down', 'stand', 0, x0 + 13, y0 + 34);
+      drawV2(ctx, a, 'down', 'stand', v2Frame('stand', t, i * 120), x0 + 37, y0 + 34);
+      ctx.fillStyle = '#5b6576';
+      ctx.font = '600 3px system-ui, sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText(c.name, x0 + 37, y0 + 38.4);
+    });
+  });
+  sub('Andando nas 4 direções (4×)');
+  const dirs: readonly Dir[] = ['down', 'right', 'up', 'left'];
+  hiCanvas(s, 26 * 4 * 2 + 8, 36 * Math.ceil(CAST.length / 2), 4, (ctx, t) => {
+    CAST.forEach((_, i) => {
+      const a = castAppearance[i];
+      const x0 = (i % 2) * (26 * 4 + 8);
+      const y0 = Math.floor(i / 2) * 36;
+      dirs.forEach((dir, k) => drawV2(ctx, a, dir, 'walk', v2Frame('walk', t, i * 70), x0 + 13 + k * 26, y0 + 33));
+    });
+  });
+  sub('Sentados: de frente (mesa face a face) e de costas digitando (4×)');
+  hiCanvas(s, 26 * CAST.length, 36, 4, (ctx, t) => {
+    CAST.forEach((_, i) => {
+      const a = castAppearance[i];
+      drawV2(ctx, a, i % 2 ? 'up' : 'down', i % 2 ? 'type' : 'sit', v2Frame(i % 2 ? 'type' : 'sit', t, i * 90), 13 + i * 26, 33);
+    });
+  });
+  sub('No tamanho do escritório (zoom 2×): em cima o atual, embaixo o novo');
+  hiCanvas(s, 26 * CAST.length, 72, 2, (ctx, t) => {
+    CAST.forEach((_, i) => {
+      const a = castAppearance[i];
+      const dir = dirs[i % 4];
+      drawV1(ctx, a, dir, 'walk', frameOf('walk', t, i * 70), 13 + i * 26, 33);
+      drawV2(ctx, a, dir, 'walk', v2Frame('walk', t, i * 70), 13 + i * 26, 69);
+    });
+  });
+}
+
+function posesV2(): void {
+  const s = section('poses-v2', 'Personagens v2 — poses, itens e fantasias', 'Todas as poses do contrato nas 4 direções (as sentadas sobre a cadeira), itens nas mãos e as fantasias do Natal e do Halloween.');
+  const dirs: readonly Dir[] = ['down', 'right', 'up', 'left'];
+  const who = (i: number) => castAppearance[i % castAppearance.length];
+  const cw = 26;
+  const ch = 38;
+  const sub = (t: string) => {
+    const h = document.createElement('p');
+    h.className = 'desc';
+    h.style.margin = '14px 0 6px';
+    h.textContent = t;
+    s.appendChild(h);
+  };
+  sub('Poses × direções (3×)');
+  const POSE_HELD: Partial<Record<Pose, HeldItem>> = { drink: 'coffee', read: 'book', play: 'paddle', game: 'controller', groom: 'lipstick', wait: 'popcorn', rps: 'scissors' };
+  hiCanvas(s, cw * 4 * 5 + 16, ch * Math.ceil(POSES.length / 5), 3, (ctx, t) => {
+    POSES.forEach((pose, i) => {
+      const col = i % 5;
+      const row = Math.floor(i / 5);
+      dirs.forEach((dir, k) => {
+        const x = col * (cw * 4 + 4) + k * cw + 13;
+        const y = row * ch + 33;
+        const a = who(i);
+        ctx.save();
+        ctx.translate(x - 12, y - 31);
+        drawCharacterV2(ctx, { appearance: a, dir, pose, frame: Math.floor(t / art.poseFrameDuration(pose)) % art.poseFrameCount(pose), held: POSE_HELD[pose], seated: SEATED_POSES.includes(pose) }, { shadow: true });
+        ctx.restore();
+      });
+      ctx.fillStyle = '#5b6576';
+      ctx.font = '600 2.6px system-ui, sans-serif';
+      ctx.textAlign = 'left';
+      ctx.fillText(POSE_PT[pose], col * (cw * 4 + 4) + 2, row * ch + 3);
+    });
+  });
+  sub('Itens nas mãos: parado de frente, andando de lado e de costas (3×)');
+  const items = HELD.filter((h) => h !== 'rock' && h !== 'paper' && h !== 'scissors');
+  hiCanvas(s, cw * 3 * 6 + 12, ch * Math.ceil(items.length / 6), 3, (ctx, t) => {
+    items.forEach((held, i) => {
+      const col = i % 6;
+      const row = Math.floor(i / 6);
+      (['down', 'right', 'up'] as const).forEach((dir, k) => {
+        const pose: Pose = k === 0 ? 'stand' : 'walk';
+        ctx.save();
+        ctx.translate(col * (cw * 3 + 2) + k * cw + 1, row * ch + 2);
+        drawCharacterV2(ctx, { appearance: who(i + 3), dir, pose, frame: Math.floor(t / art.poseFrameDuration(pose)) % art.poseFrameCount(pose), held }, { shadow: true });
+        ctx.restore();
+      });
+      ctx.fillStyle = '#5b6576';
+      ctx.font = '600 2.6px system-ui, sans-serif';
+      ctx.textAlign = 'left';
+      ctx.fillText(HELD_PT[held], col * (cw * 3 + 2) + 2, row * ch + 3);
+    });
+  });
+  sub('Fantasias (Natal e Halloween), boné e gorro (4×)');
+  const costumes = ['santa', 'witch', 'pumpkin', 'vampire'] as const;
+  hiCanvas(s, cw * 10, ch * 2, 4, (ctx, t) => {
+    costumes.forEach((costume, i) => {
+      (['down', 'right'] as const).forEach((dir, k) => {
+        ctx.save();
+        ctx.translate((i * 2 + k) * cw + 1, 2);
+        drawCharacterV2(ctx, { appearance: who(i * 2 + k), dir, pose: 'stand', frame: Math.floor(t / 650) % 2, costume }, { shadow: true });
+        ctx.restore();
+      });
+    });
+    const capped = [
+      art.appearanceFromSeed(77, { look: 'm', parts: { accessory: 'cap', accessoryColor: '#e2604f', hairStyle: 'short' } }),
+      art.appearanceFromSeed(78, { look: 'f', parts: { accessory: 'beanie', accessoryColor: '#efb54a', hairStyle: 'long' } }),
+    ];
+    capped.forEach((a, i) => {
+      (['down', 'right', 'up'] as const).forEach((dir, k) => {
+        ctx.save();
+        ctx.translate((i * 3 + k) * cw + 1, ch + 2);
+        drawCharacterV2(ctx, { appearance: a, dir, pose: 'stand', frame: 0 }, { shadow: true });
+        ctx.restore();
+      });
+    });
+  });
+}
+
 // ------------------------------------------------------------------ laço de animação
 
-sampleScene();
-shellWait();
-socialLife();
-characters();
-poses();
-heldItems();
-furniture();
-floors();
-walls();
-screens();
-boards();
-windows();
-clockAndIcons();
-avatars();
+// No modo ?zoom= (abaixo) só os personagens ampliados: com dezenas de canvas animados o navegador chega a descartar
+// o canvas grande e ele fica vazio.
+if (!new URLSearchParams(location.search).get('zoom')) {
+  charactersV2();
+  posesV2();
+  sampleScene();
+  shellWait();
+  socialLife();
+  characters();
+  poses();
+  heldItems();
+  furniture();
+  floors();
+  walls();
+  screens();
+  boards();
+  windows();
+  clockAndIcons();
+  avatars();
+}
 
 function loop(t: number): void {
   for (const p of painters) {
@@ -913,4 +1130,30 @@ function loop(t: number): void {
 }
 requestAnimationFrame(loop);
 
-Object.assign(window, { art });
+Object.assign(window, { art, drawCharacterV2, castAppearance });
+
+// ?zoom=0d,6d,2r[&pose=walk&frame=1]: personagens v2 do elenco bem grandes, por cima da página (índice + d/u/l/r).
+const zoomParam = new URLSearchParams(location.search);
+if (zoomParam.get('zoom')) {
+  const DIR_OF: Record<string, Dir> = { d: 'down', u: 'up', l: 'left', r: 'right' };
+  const list = (zoomParam.get('zoom') ?? '').split(',').map((x) => [Number.parseInt(x, 10), DIR_OF[x.slice(-1)] ?? 'down'] as const);
+  const pose = (zoomParam.get('pose') ?? 'stand') as Pose;
+  const frame = Number(zoomParam.get('frame') ?? 0);
+  const S = 24;
+  const c = document.createElement('canvas');
+  c.width = 26 * S * list.length;
+  c.height = 34 * S;
+  const g = c.getContext('2d') as CanvasRenderingContext2D;
+  g.scale(S, S);
+  list.forEach(([i, dir], k) => {
+    g.save();
+    g.translate(k * 26 + 1, 0);
+    drawCharacterV2(g, { appearance: castAppearance[i % castAppearance.length], dir, pose, frame }, { shadow: true });
+    g.restore();
+  });
+  // vira imagem na hora: um canvas grande pode perder o conteúdo depois (contexto descartado pelo navegador)
+  const img = document.createElement('img');
+  img.src = c.toDataURL('image/png');
+  Object.assign(img.style, { position: 'fixed', left: '0', top: '0', zIndex: '99', background: '#e9ecf1', height: '100vh' });
+  document.body.appendChild(img);
+}

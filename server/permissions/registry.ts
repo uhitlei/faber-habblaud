@@ -15,6 +15,7 @@
 // conta no corpo). Diferenças: o agente casa pelo thread (agent_id ?? session_id) entre os agentes do Codex; sem
 // sugestões nem perguntas; recusar só com motivo (sem interromper); sem a busca da resposta no transcript (no Codex o
 // terminal só pede a aprovação depois que o hook termina, então ela nunca é respondida lá enquanto ele espera).
+import { isFaberOwnerCommand } from '../../shared/faber';
 import { randomBytes } from 'node:crypto';
 import { describeTool, maskSecrets, truncate } from '../../shared/activity';
 import { ANSWER_OTHER_MAX, answerSummary, ASK_TOOL, checkAnswers } from '../../shared/answers';
@@ -91,7 +92,7 @@ export interface RegistryOptions {
   maxPending?: number;
 }
 
-export type SkipReason = 'no-viewers' | 'unknown-session' | 'unsupported-tool' | 'too-many';
+export type SkipReason = 'no-viewers' | 'unknown-session' | 'unsupported-tool' | 'too-many' | 'owner-only';
 export type RegisterResult = { id: string; expiresAt: number } | { skip: SkipReason };
 export type ReleaseReason = 'terminal' | 'answered' | 'expired' | 'orphan' | 'gone' | 'unwatched' | 'shutdown';
 
@@ -388,11 +389,13 @@ export class PermissionRegistry {
 
   /**
    * Registra um pedido vindo do hook. `{skip}` = não desviar (o hook sai na hora e o terminal segue):
-   * pergunta que o escritório não consegue mostrar inteira, ninguém olhando, sessão desconhecida ou pedidos
-   * demais. Corpo inválido: lança InvalidRequest.
+   * pergunta que o escritório não consegue mostrar inteira, ninguém olhando, sessão desconhecida, pedidos
+   * demais ou decisão do Owner na fábrica Faber (gate humano, workflow-unlock: só no terminal, ver
+   * shared/faber.ts). Corpo inválido: lança InvalidRequest.
    */
   register(raw: unknown): RegisterResult {
     const req = parseHookInput(raw);
+    if (isFaberOwnerCommand(req.input.command)) return { skip: 'owner-only' };
     const codex = req.provider === 'codex';
     const desc = codex ? codexToolView(req.tool, req.input, req.cwd) : describeTool(req.tool, req.input);
     const questions = 'questions' in desc ? desc.questions : undefined;

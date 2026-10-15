@@ -27,6 +27,7 @@ import { Notifier } from './notify';
 import { ConnectionBanner, EmptyState, Splash } from './overlays';
 import { focusPermission, nextPermissionAgent } from './permission';
 import { loadPrefs, safeLocalStorage, savePrefs, worldOptionsFrom, type UiPrefs } from './prefs';
+import { setAvatarStyle } from './avatar';
 import { SettingsPopover } from './settings';
 import { Sidebar } from './sidebar';
 import { SoundControl } from './sound';
@@ -85,6 +86,7 @@ export function createUI(root: HTMLElement, store: OfficeStore, world: WorldApi)
       prefs = { ...prefs, ...patch };
       savePrefs(storage, prefs);
       world.setOptions(worldOptionsFrom(prefs));
+      setAvatarStyle(prefs.characters);
       invalidate();
     },
     now: () => timelapse?.replayTime ?? Date.now() + skew,
@@ -412,6 +414,7 @@ export function createUI(root: HTMLElement, store: OfficeStore, world: WorldApi)
 
   // ---------------------------------------------------------------- início
   world.setOptions(worldOptionsFrom(prefs));
+  setAvatarStyle(prefs.characters);
   applyLayout();
   renderAll();
 }
