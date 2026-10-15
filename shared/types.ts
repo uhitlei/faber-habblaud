@@ -5,6 +5,7 @@
 // Renomear/remover campos quebra servidor, mundo e UI ao mesmo tempo.
 
 import type { AppearanceParts } from './appearance';
+import type { FaberRoomInfo } from './faber';
 
 export type AgentKind = 'main' | 'sub';
 
@@ -206,6 +207,8 @@ export interface RoomInfo {
   createdAt: number;
   /** Efeito visual temporário na sala (eventos do GitHub detectados nos transcripts; ver shared/github.ts). */
   effect?: RoomEffect;
+  /** Fábrica Faber: a demanda da worktree ou as demandas do repositório (ver shared/faber.ts). */
+  faber?: FaberRoomInfo;
 }
 
 /**

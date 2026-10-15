@@ -1,4 +1,5 @@
 import { readFileSync, writeFileSync } from 'node:fs';
+import type { FaberRoomInfo, FaberTaskInfo } from '../../shared/faber';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import type { Activity } from '../../shared/types';
@@ -200,9 +201,10 @@ describe('NameStore: personagem de cada sala', () => {
   });
 });
 
-function makeOffice(names = new NameStore(null)) {
+function makeOffice(names = new NameStore(null), faber?: (path: string) => FaberRoomInfo | undefined) {
   let clock = 1_000_000;
   const office = new Office({
+    faber,
     names,
     version: 't',
     startedAt: clock,
@@ -236,6 +238,28 @@ describe('Office', () => {
     office.setStatus('acc:1', 'working');
     office.setStatus('acc:1', 'waiting', 'aprovar uma permissão');
     expect(office.commit().notices.filter((n) => n.level === 'alert')).toHaveLength(1);
+  });
+
+  it('fábrica Faber: a sala leva o resumo das demandas e o aviso é da sala, sem agente', () => {
+    const task: FaberTaskInfo = { id: 'TASK-42', title: 'Checkout', state: 'my-review', gate: 'G6', awaitingOwner: 'G6' };
+    const { office, now } = makeOffice(undefined, (path) => (path === '/p/loja' ? { task } : undefined));
+    office.addMain({ id: 'acc:1', account: 'acc', sessionId: 's1', cwd: '/p/loja', role: 'x', startedAt: now(), status: 'working' });
+    office.addMain({ id: 'acc:2', account: 'acc', sessionId: 's2', cwd: '/p/outra', role: 'x', startedAt: now(), status: 'working' });
+    office.commit();
+    expect(office.roomRefs()).toEqual([
+      { id: '/p/loja', path: '/p/loja' },
+      { id: '/p/outra', path: '/p/outra' },
+    ]);
+    office.faberNotice('/p/loja', 'alert', '✋ TASK-42 aguarda você no G6', 'TASK-42|owner|G6');
+    office.faberNotice('/p/loja', 'alert', '✋ TASK-42 aguarda você no G6', 'TASK-42|owner|G6');
+    office.faberNotice('/p/sumiu', 'alert', 'x', 'y');
+    office.markDirty();
+    const r = office.commit();
+    expect(r.snapshot.rooms.find((x) => x.id === '/p/loja')?.faber).toEqual({ task });
+    expect(r.snapshot.rooms.find((x) => x.id === '/p/outra')?.faber).toBeUndefined();
+    expect(r.notices).toHaveLength(1);
+    expect(r.notices[0]).toMatchObject({ roomId: '/p/loja', level: 'alert' });
+    expect(r.notices[0].agentId).toBeUndefined();
   });
 
   it('feed traz a conta do agente; snapshot leva só as últimas atividades (histórico completo no detalhe)', () => {

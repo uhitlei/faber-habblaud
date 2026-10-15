@@ -52,6 +52,11 @@ export interface ServerConfig {
   updateCheck: boolean;
   /** Observa as sessões do Codex (sources/codex/); HABBLAUD_CODEX=0 desliga. */
   codex: boolean;
+  /**
+   * Mostra a fábrica Faber nas salas (sources/faber/: demandas, gates, quem espera o Owner); HABBLAUD_FABER=0 desliga.
+   * Fora no Docker, que não monta as pastas dos projetos.
+   */
+  faber: boolean;
   /** Segunda porta, com login, para o celular na rede local (http/remote.ts); ausente = desligada. */
   remote?: RemoteConfig;
   /** Por que o acesso remoto ficou desligado quando as variáveis estão incompletas. */
@@ -176,6 +181,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env, argv: string[] 
     repo: pkg.repo,
     updateCheck: !env.HABBLAUD_UPDATE_CHECK?.trim() || isTruthy(env.HABBLAUD_UPDATE_CHECK),
     codex: !env.HABBLAUD_CODEX?.trim() || isTruthy(env.HABBLAUD_CODEX),
+    faber: !inDocker && (!env.HABBLAUD_FABER?.trim() || isTruthy(env.HABBLAUD_FABER)),
     remote: remote.config,
     remoteWarning: remote.warning,
   };

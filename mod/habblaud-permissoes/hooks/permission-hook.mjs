@@ -63,6 +63,27 @@ export function parseOptions(argv, env = process.env) {
   };
 }
 
+// Fábrica Faber (https://github.com/uhitlei/faber): aprovar um gate humano (G1/G6/G8) com o gate-set e liberar a
+// edição de workflows com o workflow-unlock são decisões do Owner, e o Faber faz delas um diálogo de permissão de
+// propósito (h1-bash-guard.sh, regras 8 e 9): confirmar o diálogo É a aprovação. Esses pedidos nunca vão ao
+// Habblaud (nem pelo celular): o hook sai sem decidir e vale só o terminal. Mesma regra em shared/faber.ts
+// (isFaberOwnerCommand), que o servidor também aplica; aqui fica duplicada porque o plugin não importa nada fora
+// de node:*.
+const FABER_GATE_SET = /\bgate-set(\.sh)?\b/;
+const FABER_HUMAN_GATE = /\bG(1|6|8)\b/;
+const FABER_APPROVED = /\bapproved\b/;
+const FABER_UNLOCK = /\bworkflow-unlock(\.sh)?\b/;
+const FABER_REVOKE = /--revoke\b/;
+
+/** O comando é uma decisão do Owner na fábrica Faber (gate humano aprovado, workflow-unlock)? */
+export function isFaberOwnerCommand(toolInput) {
+  const c = toolInput?.command;
+  const cmd = typeof c === 'string' ? c : Array.isArray(c) ? c.filter((x) => typeof x === 'string').join(' ') : '';
+  if (!cmd) return false;
+  if (FABER_GATE_SET.test(cmd) && FABER_HUMAN_GATE.test(cmd) && FABER_APPROVED.test(cmd)) return true;
+  return FABER_UNLOCK.test(cmd) && !FABER_REVOKE.test(cmd);
+}
+
 /** Corta textos longos dos argumentos (conteúdo de um Write enorme, por exemplo). */
 export function trimInput(v, max = MAX_STRING, depth = 0) {
   if (typeof v === 'string') return v.length > max ? v.slice(0, max) : v;
@@ -210,6 +231,10 @@ export async function run(argv = process.argv.slice(2), env = process.env, stdin
     }
     if (!input || typeof input !== 'object' || typeof input.session_id !== 'string' || typeof input.tool_name !== 'string') return undefined;
     if (input.hook_event_name !== undefined && input.hook_event_name !== 'PermissionRequest') return undefined;
+    if (isFaberOwnerCommand(input.tool_input)) {
+      debug('decisão do Owner na fábrica Faber (gate humano ou workflow-unlock): só no terminal');
+      return undefined;
+    }
 
     const base = `http://127.0.0.1:${opts.port}`;
     const deadline = Date.now() + opts.timeoutMs;

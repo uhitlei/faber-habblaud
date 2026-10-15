@@ -1630,6 +1630,36 @@
   color: var(--ui-faint);
 }
 
+/* Fábrica Faber na sala (shared/faber.ts, faberSummary): demanda e gate, ou quem espera você. */
+.ui-room__faber {
+  align-self: flex-start;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  margin-top: 2px;
+  padding: 1px 7px;
+  border-radius: var(--radius-sm);
+  font-size: 10.5px;
+  font-weight: 600;
+  color: var(--ui-muted);
+  background: var(--ui-bg-soft);
+  border: 1px solid var(--ui-line);
+}
+
+.ui-room__faber[data-tone='owner'] {
+  color: var(--st-waiting);
+  border-color: color-mix(in srgb, var(--st-waiting) 45%, transparent);
+  background: color-mix(in srgb, var(--st-waiting) 12%, transparent);
+}
+
+.ui-room__faber[data-tone='blocked'],
+.ui-room__faber[data-tone='invalid'] {
+  color: var(--lv-crit);
+  border-color: color-mix(in srgb, var(--lv-crit) 40%, transparent);
+  background: color-mix(in srgb, var(--lv-crit) 10%, transparent);
+}
+
 .ui-room__tasks {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;

@@ -8,6 +8,7 @@ import { createServer } from 'node:net';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { afterEach, describe, expect, it } from 'vitest';
+import { isFaberOwnerCommand as sharedOwner } from '../../shared/faber';
 import { setQuiet } from '../log';
 import { hookJson, MAIN, servePermissions, type PermissionServer } from './permission-server';
 
@@ -21,8 +22,9 @@ interface HookModule {
   requestBody(input: Record<string, unknown>, timeoutMs: number): Record<string, unknown>;
   trimInput(v: unknown, max?: number): unknown;
   decisionOutput(result: unknown, input: unknown): unknown;
+  isFaberOwnerCommand(toolInput: unknown): boolean;
 }
-const { decisionOutput, parseOptions, requestBody, trimInput } = (await import(pathToFileURL(HOOK).href)) as HookModule;
+const { decisionOutput, isFaberOwnerCommand, parseOptions, requestBody, trimInput } = (await import(pathToFileURL(HOOK).href)) as HookModule;
 
 /**
  * tool_input de um AskUserQuestion. Os textos que voltam em `answers` são os ORIGINAIS (o escritório só vê os
@@ -181,6 +183,16 @@ describe('permission-hook.mjs (processo)', () => {
     expect(srv.registry!.size).toBe(0);
   });
 
+  it('fábrica Faber: aprovar gate humano ou workflow-unlock nunca vai ao Habblaud (só o terminal)', async () => {
+    srv = await servePermissions();
+    for (const command of ['bash faber/scripts/gate-set.sh TASK-42 G6 approved --by owner', 'faber/scripts/workflow-unlock.sh TASK-7 --by owner']) {
+      const r = await runHook(JSON.stringify(hookJson({ tool_input: { command } })), ['--port', String(srv.port)]);
+      expect(r, command).toMatchObject({ code: 0, stdout: '' });
+      expect(r.ms).toBeLessThan(3_000);
+    }
+    expect(srv.registry!.size).toBe(0);
+  });
+
   it('tempo limite (--timeout): desiste, sai sem decisão e o pedido some do escritório', async () => {
     srv = await servePermissions({ registry: { orphanMs: 300 } });
     const r = await runHook(JSON.stringify(hookJson()), ['--port', String(srv.port), '--timeout', '5']);
@@ -254,5 +266,32 @@ describe('permission-hook.mjs (funções)', () => {
     // Aprovar sem respostas não responde a pergunta: sem decisão. Recusar vale.
     expect(decisionOutput({ status: 'decided', behavior: 'allow' }, askJson())).toBeUndefined();
     expect(decisionOutput({ status: 'decided', behavior: 'deny' }, askJson())).toMatchObject({ hookSpecificOutput: { decision: { behavior: 'deny' } } });
+  });
+});
+
+describe('permission-hook.mjs: decisões do Owner na fábrica Faber', () => {
+  // Mesma regra do h1-bash-guard.sh do Faber (regras 8 e 9) e de shared/faber.ts: a tabela prova que as duas cópias
+  // (o hook não importa nada fora de node:*) dizem o mesmo.
+  const CASES: [unknown, boolean][] = [
+    ['bash faber/scripts/gate-set.sh TASK-42 G6 approved --by owner', true],
+    ['faber/scripts/gate-set.sh TASK-1 G1 approved', true],
+    ['gate-set TASK-9 G8 approved', true],
+    [['bash', 'faber/scripts/gate-set.sh', 'TASK-9', 'G8', 'approved'], true],
+    ['faber/scripts/workflow-unlock.sh TASK-7 --by owner', true],
+    ['faber/scripts/workflow-unlock.sh TASK-7 --revoke', false],
+    ['faber/scripts/gate-set.sh TASK-42 G3 approved', false],
+    ['faber/scripts/gate-set.sh TASK-42 G6 rejected', false],
+    ['faber/scripts/gate-set.sh TASK-42 G16 approved', false],
+    ['echo approved G6', false],
+    ['npm test', false],
+    [undefined, false],
+    [42, false],
+  ];
+  it('hook e servidor concordam', () => {
+    for (const [command, want] of CASES) {
+      expect(isFaberOwnerCommand({ command }), String(command)).toBe(want);
+      expect(sharedOwner(command), String(command)).toBe(want);
+    }
+    expect(isFaberOwnerCommand(undefined)).toBe(false);
   });
 });

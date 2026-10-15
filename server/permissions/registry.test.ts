@@ -87,6 +87,9 @@ describe('PermissionRegistry: registro', () => {
     setViewers(2);
     expect(registry.register(hookInput({ session_id: 'outra' }))).toEqual({ skip: 'unknown-session' });
     expect(registry.register(hookInput({ tool_name: 'AskUserQuestion' }))).toEqual({ skip: 'unsupported-tool' });
+    // fábrica Faber: aprovar gate humano é decisão do Owner no terminal, mesmo se um hook antigo mandar o pedido
+    expect(registry.register(hookInput({ tool_input: { command: 'bash faber/scripts/gate-set.sh TASK-4 G8 approved' } }))).toEqual({ skip: 'owner-only' });
+    expect(registry.register(hookInput({ tool_input: { command: 'faber/scripts/workflow-unlock.sh TASK-4 --by ana' } }))).toEqual({ skip: 'owner-only' });
     expect(registry.register(askInput({ tool_input: { questions: [] } }))).toEqual({ skip: 'unsupported-tool' });
     // Mais perguntas do que o escritório mostra: o hook não conseguiria responder todas.
     const five = Array.from({ length: 5 }, (_, i) => ({ question: `Pergunta ${i}?`, options: [{ label: 'Sim' }, { label: 'Não' }] }));

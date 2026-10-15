@@ -61,6 +61,27 @@ linhas com mais de 2 min), aviso e efeito na sala, publicado em `RoomInfo.effect
 until, agentId}`): festa (PR aberto/mergeado, release) por 12 s; alarme (CI vermelho) até um CI verde na sala (que vira
 festa) ou 10 min. Push só avisa. O mesmo CI visto de novo em 2 min não repete o aviso.
 
+## Fábrica Faber
+
+`sources/faber/rooms.ts` (`FaberRooms`) varre a cada 2 s as salas abertas (`Office.roomRefs`) atrás dos `state.yaml` da
+[Faber](https://github.com/uhitlei/faber) e publica o resumo em `RoomInfo.faber` (`shared/faber.ts`):
+
+- sala `<repo>/.claude/worktrees/TASK-<n>` → `task`, lido de `<sala>/faber/tasks/TASK-<n>/state.yaml` (a cópia viva);
+- sala com `faber/tasks/` → `tasks` (em andamento, até 12: quem espera o Owner, bloqueadas, mais recentes), `done` e
+  `invalid`, juntando `faber/tasks/*` e `.claude/worktrees/*/faber/tasks/*`; cópias da mesma demanda: vale a de
+  `updated_at` mais recente (empate: a da worktree).
+
+As regras são as do `monitor.py` do Faber: gate corrente = primeiro G1..G9 `pending`; espera o Owner quem está em
+`ready-for-dev`/`my-review`/`pr-open` com G1/G6/G8 pendente; estado fora da lista = leitura inválida. O YAML é lido por
+`sources/faber/yaml.ts` (sem dependências; cobre o que o `yaml.safe_dump` do PyYAML grava e recusa âncoras, tags e
+documentos múltiplos). Arquivos só são relidos quando mudam (mtime + tamanho). Uma demanda que passa a esperar o Owner
+ou fica bloqueada vira aviso da sala (`Office.faberNotice`), nunca na primeira varredura. `HABBLAUD_FABER=0` desliga;
+no Docker fica desligado.
+
+Decisões do Owner (`gate-set ... G1|G6|G8 ... approved` e `workflow-unlock` sem `--revoke`, as regras 8 e 9 do
+`h1-bash-guard.sh` do Faber) nunca são respondidas pelo escritório: o hook sai sem registrar e `POST /api/permissions`
+responde `{skip: 'owner-only'}` (`isFaberOwnerCommand`, com a mesma regra duplicada no hook).
+
 ## API
 
 | Rota | Descrição |

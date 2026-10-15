@@ -12,7 +12,8 @@ import type { Character } from '../sim/character';
 import { shellAgeKey, shellBubbleAlpha, shellBubbleText, STORM_LIFT, unitHash } from '../sim/shell';
 import type { Sim } from '../sim/sim';
 import { buildAnim } from './anim';
-import { drawFxBanner } from './github-fx';
+import { drawFxBanner, reducedMotion } from './github-fx';
+import { faberSummary } from '../../../../shared/faber';
 import type { HeadInfo, Renderer } from './renderer';
 import { tr } from '../../../../shared/i18n';
 
@@ -29,6 +30,7 @@ const ROOM_FONT = `700 12px ${UI_FONT}`;
 const CORE_FONT = `600 11px ${UI_FONT}`;
 const CORE_FONT_SMALL = `600 9.5px ${UI_FONT}`;
 const signFont = (size: number) => `700 ${size}px ${UI_FONT}`;
+const FABER_FONT = `700 11px ${UI_FONT}`;
 
 /** Largura máxima dos balões (o de alerta é maior: o motivo é a informação acionável). */
 export const BUBBLE_MAX_W = 220;
@@ -306,6 +308,7 @@ export class Overlay {
     // placas e pílulas primeiro: são fixas e grandes; balões e etiquetas desviam delas
     this.drawRoomTexts(now, zoom);
     this.drawFxBanners(now, zoom);
+    this.drawFaberCards(now, zoom);
 
     // ---- coleta balões e etiquetas dos personagens visíveis
     const items = this.items;
@@ -463,6 +466,58 @@ export class Overlay {
       if (cx < -200 || cx > camera.viewW + 200 || top < -40 || top > camera.viewH + 40) continue;
       const b = drawFxBanner(this.ctx, fx, cx, top, r.w * TILE * zoom - 12, now, (f, t, w) => this.fit(f, t, w), (f, t) => this.measure(f, t));
       if (b) this.place(b.x, b.y, b.w, b.h);
+    }
+  }
+
+  /**
+   * Fábrica Faber: placa no alto do piso de cada sala com demanda (abaixo da faixa da festa/alarme, se houver).
+   * Quem espera o Owner (G1/G6/G8) pisca em âmbar; bloqueada fica vermelha.
+   */
+  private drawFaberCards(now: number, zoom: number): void {
+    const { ctx, camera } = this;
+    const still = reducedMotion();
+    for (const room of this.sim.rooms.values()) {
+      if (!room.present || room.ghost || !room.info.faber) continue;
+      const fab = faberSummary(room.info.faber);
+      if (!fab) continue;
+      const r = room.layout.rect;
+      const maxW = r.w * TILE * zoom - 16;
+      if (maxW < 70) continue;
+      const cx = this.sx((r.x + r.w / 2) * TILE);
+      const top = this.sy((r.y + 2) * TILE) + 4 + (this.sim.roomFx.get(room.id, now) ? 30 : 0);
+      if (cx < -200 || cx > camera.viewW + 200 || top < -40 || top > camera.viewH + 40) continue;
+      const text = this.fit(FABER_FONT, fab.text, Math.min(300, maxW - 20));
+      if (!text || text === '…') continue;
+      const w = Math.round(this.measure(FABER_FONT, text) + 20);
+      const h = 20;
+      const x = Math.round(cx - w / 2);
+      const y = Math.round(top);
+      const pulse = still || fab.tone !== 'owner' ? 1 : 0.5 + 0.5 * Math.sin((now / 700) * Math.PI * 2);
+      const body = fab.tone === 'owner' ? (pulse > 0.5 ? '#ffb547' : '#f59e0b') : fab.tone === 'normal' ? 'rgba(22,27,40,0.88)' : '#c8202e';
+      const ink = fab.tone === 'owner' ? '#3a2606' : fab.tone === 'normal' ? '#eef2fa' : '#ffffff';
+      ctx.save();
+      ctx.globalAlpha = room.lightOn ? 1 : 0.8;
+      ctx.fillStyle = 'rgba(16,20,32,0.25)';
+      ctx.beginPath();
+      ctx.roundRect(x, y + 2, w, h, 10);
+      ctx.fill();
+      ctx.fillStyle = body;
+      ctx.beginPath();
+      ctx.roundRect(x, y, w, h, 10);
+      ctx.fill();
+      if (fab.tone === 'normal') {
+        ctx.fillStyle = room.theme.accent;
+        ctx.beginPath();
+        ctx.roundRect(x, y, 4, h, [10, 0, 0, 10]);
+        ctx.fill();
+      }
+      ctx.font = FABER_FONT;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillStyle = ink;
+      ctx.fillText(text, cx + (fab.tone === 'normal' ? 2 : 0), y + h / 2 + 0.5);
+      ctx.restore();
+      this.place(x, y, w, h);
     }
   }
 

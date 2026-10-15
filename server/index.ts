@@ -34,6 +34,7 @@ import { createMessageRoutes } from './messages/http';
 import { MessageRegistry } from './messages/registry';
 import type { CodexLive } from './sources/codex/live';
 import { ClaudeWatcher } from './sources/watcher';
+import { FaberRooms } from './sources/faber/rooms';
 import { discoverCodexDirs } from './sources/codex/accounts';
 import { CodexHistory } from './sources/codex/history';
 import { CodexSource } from './sources/codex/source';
@@ -87,6 +88,11 @@ const accounts = new AccountsService({
   usageDir: config.usageDir,
   onChange: () => late.office?.markDirty(),
 });
+// Fábrica Faber nas salas (sources/faber/): demandas, gates e quem espera o Owner, lidos dos state.yaml das pastas
+// das salas a cada 2 s. HABBLAUD_FABER=0 desliga; fica de fora no Docker, que não monta as pastas dos projetos.
+const faber = config.faber
+  ? new FaberRooms({ onNotice: (n) => late.office?.faberNotice(n.roomId, n.level, n.text, n.key) })
+  : undefined;
 const office = new Office({
   names,
   roomAlias: (path) => roomAliases.get(path),
@@ -102,6 +108,7 @@ const office = new Office({
   messages: config.messages ? () => late.messages?.reachable() ?? new Set() : undefined,
   ptys: () => (late.ptys ? { status: late.ptys.status(), list: late.ptys.list() } : { status: { enabled: false, reason: late.ptyOff ?? tr('desligado') }, list: [] }),
   updates: () => updates.status(),
+  faber: faber ? (path) => faber.get(path) : undefined,
 });
 // Fontes de agentes, uma por ferramenta (sources/source.ts): a do Claude Code e, depois dela, a do Codex (quando há
 // pastas do Codex; HABBLAUD_CODEX=0 desliga), com o histórico dela no HistorySet abaixo e as contas registradas por
@@ -266,7 +273,15 @@ permissions?.start();
 messages?.start();
 stats.start();
 updates.start();
+let ticks = 0;
 const ticker = setInterval(() => {
+  if (faber && ticks++ % 8 === 0) {
+    try {
+      if (faber.scan(office.roomRefs())) office.markDirty();
+    } catch (err) {
+      log.warnOnce(`faber:${errMsg(err)}`, tr('Falha ao ler a fábrica Faber: {0}', [errMsg(err)]));
+    }
+  }
   try {
     office.tick();
   } catch (err) {

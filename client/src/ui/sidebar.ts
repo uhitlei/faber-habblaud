@@ -12,6 +12,7 @@ import { officeIsEmpty } from './overlays';
 import { createAgentRow, updateAgentRow } from './rows';
 import { createAccountChip, createProgress, updateAccountChip, updateProgress } from './widgets';
 import { tr } from '../../../shared/i18n';
+import { faberSummary } from '../../../shared/faber';
 
 interface RoomRefs {
   head: HTMLButtonElement;
@@ -22,6 +23,8 @@ interface RoomRefs {
   tasks: HTMLElement;
   tasksBar: HTMLElement;
   tasksText: HTMLElement;
+  /** Fábrica Faber na sala: demanda e gate, ou quem espera você (shared/faber.ts). */
+  faber: HTMLElement;
   nodes: KeyedList<AgentNode>;
 }
 
@@ -203,6 +206,7 @@ export class Sidebar implements UiComponent {
     const tasksBar = createProgress(tr('Progresso das tarefas da sala'));
     const tasksText = h('span', { class: 'ui-room__tasks-text' });
     const tasks = h('span', { class: 'ui-room__tasks' }, tasksBar, tasksText);
+    const faber = h('span', { class: 'ui-room__faber' });
     const swatch = h('span', { class: 'ui-room__swatch', attrs: { 'aria-hidden': 'true' } });
     const head = h(
       'button',
@@ -210,6 +214,7 @@ export class Sidebar implements UiComponent {
       swatch,
       h('span', { class: 'ui-room__line' }, name, count, accsEl),
       path,
+      faber,
       tasks,
     );
     head.addEventListener('click', () => this.ctx.select({ type: 'room', id: g.room.id }, { focus: true }));
@@ -239,7 +244,7 @@ export class Sidebar implements UiComponent {
       create: (n) => this.createNode(n),
       update: (el, n) => this.updateNode(el, n),
     });
-    this.roomRefs.set(section, { head, name, count, path, accs, tasks, tasksBar, tasksText, nodes });
+    this.roomRefs.set(section, { head, name, count, path, accs, tasks, tasksBar, tasksText, faber, nodes });
     return section;
   }
 
@@ -258,6 +263,14 @@ export class Sidebar implements UiComponent {
     r.head.classList.toggle('is-selected', selected);
     setAttr(r.head, 'aria-current', selected ? 'true' : null);
     section.classList.toggle('is-empty', present === 0);
+
+    const fab = faberSummary(g.room.faber);
+    setHidden(r.faber, !fab);
+    if (fab) {
+      setText(r.faber, fab.text);
+      setTitle(r.faber, fab.detail);
+      r.faber.dataset.tone = fab.tone;
+    }
 
     const t = g.tasks;
     setHidden(r.tasks, t.total === 0);

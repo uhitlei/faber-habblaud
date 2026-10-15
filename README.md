@@ -630,6 +630,25 @@ Each event also creates a notice ("🎉 Danilo opened PR #12 in habblaud", "🚨
 into the feed. Only what happens live livens up the room: whatever was already in the transcripts when Habblaud opened only goes to the
 history. With "reduce motion" turned on in the system, nothing flashes or spins. In demo mode, made-up PRs, merges and CI runs
 show up from time to time.
+### Faber factory
+
+If the project uses [Faber](https://github.com/uhitlei/faber) (the gated software factory for Claude Code), the office
+shows the factory next to the agents, reading the tasks' `state.yaml` files — no git, no network, nothing written:
+
+- **A task's room** (the `.claude/worktrees/TASK-42` worktree): a sign at the top of the floor with the task, its state
+  and the current gate (e.g. `TASK-42 · In development · G3`).
+- **The repository's room** (where the CTO runs): the tasks in progress across all worktrees; when the same task has
+  more than one copy, the one with the latest `updated_at` wins.
+- **Needs you:** a task in `ready-for-dev`, `my-review` or `pr-open` with G1, G6 or G8 pending blinks amber
+  (`✋ G6 is waiting for you`) and raises a notice; a blocked task turns red, with the reason in the sidebar tooltip.
+
+**Human gates are approved in the terminal only.** In Faber, confirming the `gate-set` dialog *is* your G1/G6/G8
+approval (and the `workflow-unlock` one, the workflow unlock). So those requests never show up in the office or on
+the phone: Habblaud's permission hook exits without deciding and the server refuses the request even if it arrives.
+Everything else can still be answered from the office.
+
+Turn it off with `HABBLAUD_FABER=0`. It stays off in Docker, which doesn't mount the project folders.
+
 ### My day
 
 The **My day** button (or the `M` key) shows where the day went: how much time the agents spent working and,
@@ -728,6 +747,7 @@ Everything works without configuring anything. If you need to adjust something, 
 | `HABBLAUD_CODEX` | on | `0` turns off Codex in the office. |
 | `HABBLAUD_CODEX_DIRS` | automatic detection | Codex folders, comma-separated (instead of `~/.codex*` and `CODEX_HOME`). |
 | `HABBLAUD_CODEX_BIN` | `codex` from PATH (on Windows, `codex.exe`) | The Codex binary that delivers the messages (`codex queue`), in Node mode or in `npm run codex:bridge`. |
+| `HABBLAUD_FABER` | on (outside Docker) | `0` turns off the [Faber factory](#faber-factory) in the rooms. |
 | `HABBLAUD_UPDATE_CHECK` | on | `0` turns off the new-version check (a request to the repository's releases on GitHub every 6 h). |
 | `HABBLAUD_LANG` | system language (except English), otherwise `pt-BR` | Language of the texts the server builds (activities, notices, logs): `pt-BR`, `en`, `es` or `fr`. The interface follows the browser or the choice in Settings › Language. See [Languages](#languages). |
 | `HABBLAUD_ACCOUNTS` | — | JSON to customize name, letter or color, matched by the account folder name. E.g. `[{"id":".claude-conta2","name":"Trabalho","short":"T","color":"#5cc97b"}]`. |

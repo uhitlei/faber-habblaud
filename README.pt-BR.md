@@ -628,6 +628,26 @@ Cada evento também gera um aviso ("🎉 Danilo abriu o PR #12 em habblaud", "�
 no feed. Só o que acontece ao vivo anima a sala: o que já estava nos transcripts quando o Habblaud abriu vai só para o
 histórico. Com "reduzir movimento" ligado no sistema, nada pisca nem gira. No modo demonstração, PRs, merges e CIs
 fictícios aparecem de tempos em tempos.
+### Fábrica Faber
+
+Se o projeto usa a [Faber](https://github.com/uhitlei/faber) (a fábrica de software com gates para o Claude Code), o
+escritório mostra a fábrica junto com os agentes, lendo os `state.yaml` das demandas — sem git, sem rede e sem escrever
+nada:
+
+- **Sala de uma demanda** (a worktree `.claude/worktrees/TASK-42`): uma placa no alto do piso com a demanda, o estado e
+  o gate corrente (ex.: `TASK-42 · Em desenvolvimento · G3`).
+- **Sala do repositório** (onde roda o CTO): as demandas em andamento de todas as worktrees; quando há mais de uma cópia
+  da mesma demanda, vale a de `updated_at` mais recente.
+- **Precisa de você:** uma demanda em `ready-for-dev`, `my-review` ou `pr-open` com o G1, G6 ou G8 pendente pisca em
+  âmbar (`✋ G6 aguarda você`) e vira aviso; bloqueada fica vermelha, com o motivo na dica da lista lateral.
+
+**Aprovar gate humano é só no terminal.** No Faber, confirmar o diálogo do `gate-set` *é* a sua aprovação do G1/G6/G8
+(e o do `workflow-unlock`, a liberação dos workflows). Por isso esses pedidos nunca aparecem no escritório nem no
+celular: o hook de permissão do Habblaud sai sem decidir e o servidor recusa o pedido mesmo que chegue. Todo o resto
+continua respondível pelo escritório.
+
+Desligue com `HABBLAUD_FABER=0`. No Docker fica de fora, porque as pastas dos projetos não são montadas.
+
 ### Meu dia
 
 O botão **Meu dia** (ou a tecla `M`) mostra para onde foi o dia: quanto tempo os agentes passaram trabalhando e,
@@ -726,6 +746,7 @@ Tudo funciona sem configurar nada. Se precisar ajustar, use variáveis de ambien
 | `HABBLAUD_CODEX` | ligado | `0` desliga o Codex no escritório. |
 | `HABBLAUD_CODEX_DIRS` | detecção automática | Pastas do Codex, separadas por vírgula (no lugar de `~/.codex*` e `CODEX_HOME`). |
 | `HABBLAUD_CODEX_BIN` | `codex` do PATH (no Windows, `codex.exe`) | O binário do Codex que entrega as mensagens (`codex queue`), no modo Node ou no `npm run codex:bridge`. |
+| `HABBLAUD_FABER` | ligado (fora do Docker) | `0` desliga a [fábrica Faber](#fábrica-faber) nas salas. |
 | `HABBLAUD_UPDATE_CHECK` | ligado | `0` desliga a verificação de versão nova (uma consulta às releases do repositório no GitHub a cada 6 h). |
 | `HABBLAUD_LANG` | idioma do sistema (menos inglês), senão `pt-BR` | Idioma dos textos montados pelo servidor (atividades, avisos, logs): `pt-BR`, `en`, `es` ou `fr`. A interface segue o navegador ou a escolha em Configurações › Idioma. Ver [Idiomas](#idiomas). |
 | `HABBLAUD_ACCOUNTS` | — | JSON para personalizar nome, letra ou cor, casado pelo nome da pasta da conta. Ex.: `[{"id":".claude-conta2","name":"Trabalho","short":"T","color":"#5cc97b"}]`. |
