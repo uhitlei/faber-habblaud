@@ -543,6 +543,12 @@
   user-select: none;
 }
 
+/* traço suave (personagens v2): sem pixelar */
+.ui-avatar[data-style='v2'] img,
+.ui-char__preview[data-style='v2'] {
+  image-rendering: auto;
+}
+
 .ui-avatar--xs {
   width: 20px;
   height: 20px;

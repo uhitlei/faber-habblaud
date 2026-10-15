@@ -2,6 +2,8 @@
 // Implementação: client/src/world/index.ts -> createWorld().
 // Regra: mudanças aqui devem ser ADITIVAS.
 
+import type { CharacterStyle } from '../art/api';
+
 export type Selection = { type: 'agent'; id: string } | { type: 'room'; id: string } | null;
 
 export interface WorldOptions {
@@ -19,6 +21,8 @@ export interface WorldOptions {
   daylight?: DaylightMode;
   /** Tema visual: automático (segue o calendário; ver seasonalThemeFor), nenhum, Natal ou Halloween. */
   theme?: OfficeTheme;
+  /** (Opcional, aditivo) Estilo dos personagens: traço suave ('v2', o padrão) ou pixel art ('classic'). */
+  characters?: CharacterStyle;
 }
 
 /** Tema que o renderer desenha: o escritório original ('none') ou um dos sazonais. */
@@ -150,4 +154,5 @@ export const DEFAULT_WORLD_OPTIONS: WorldOptions = {
   followSelected: false,
   dayNight: true,
   theme: 'auto',
+  characters: 'v2',
 };

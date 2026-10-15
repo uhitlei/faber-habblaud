@@ -1,6 +1,7 @@
 // Editor do personagem na gaveta do agente: nome, "Sortear" e as peças (pele, cabelo, roupa...) com prévia de corpo
 // inteiro. "Salvar" grava o personagem do projeto (a sala) no servidor; as regras puras (quando aparece, rótulos, o
 // que vai em `parts`) estão em character-model.ts.
+import { avatarStyle } from './avatar';
 import { NAME_MAX, type PartKey } from '../../../shared/appearance';
 import type { AgentInfo } from '../../../shared/types';
 import { appearanceFromSeed, characterSprite, editorConflict, editorOptions, fitToOptions } from '../art';
@@ -258,13 +259,17 @@ export class CharacterEditor {
 
   private drawPreview(a: Appearance): void {
     try {
-      const s = characterSprite({ appearance: a, dir: 'down', pose: 'stand', frame: 0 });
+      const style = avatarStyle();
+      const s = characterSprite({ appearance: a, dir: 'down', pose: 'stand', frame: 0, style, scale: PREVIEW_SCALE * 2 });
       const c = this.preview;
-      c.width = s.canvas.width * PREVIEW_SCALE;
-      c.height = s.canvas.height * PREVIEW_SCALE;
+      const k = s.scale ?? 1;
+      c.width = (s.canvas.width / k) * PREVIEW_SCALE;
+      c.height = (s.canvas.height / k) * PREVIEW_SCALE;
+      c.dataset.style = style;
       const g = c.getContext('2d');
       if (!g) return;
-      g.imageSmoothingEnabled = false;
+      g.imageSmoothingEnabled = k > 1;
+      g.imageSmoothingQuality = 'high';
       g.clearRect(0, 0, c.width, c.height);
       g.drawImage(s.canvas, 0, 0, c.width, c.height);
     } catch (err) {

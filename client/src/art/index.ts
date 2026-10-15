@@ -8,6 +8,7 @@ import { hash32 } from '../../../shared/hash';
 import {
   TILE,
   type Appearance,
+  type CharacterStyle,
   type ArtModule,
   type CharacterFrameRequest,
   type Doorway,
@@ -22,6 +23,7 @@ import {
 } from './api';
 import { appearanceFromSeed as appearanceFromSeedPure, appearanceKey } from './character/appearance';
 import { CHAR_H, CHAR_W, POSE_DURATION, POSE_FRAMES, isSeated, renderCharacter } from './character/render';
+import { drawCharacterV2, poseOf as v2PoseOf, renderCharacterV2, V2_AX, V2_AY, V2_FRAMES } from './character2/render';
 import { shade } from './core/color';
 import { PixelBuf } from './core/pixbuf';
 import type { BufSprite } from './core/sprite';
@@ -69,6 +71,8 @@ class Cache<T> {
 }
 
 const charCache = new Cache<Sprite>(30000);
+/** Sprites v2 são maiores (até 96x136): cache menor. */
+const charCacheV2 = new Cache<Sprite>(1500);
 const furnCache = new Cache<FurnitureSprites>(4000);
 const tileCache = new Cache<HTMLCanvasElement>(2000);
 const floorCache = new Cache<HTMLCanvasElement>(1500);
@@ -100,7 +104,23 @@ export function poseFrameDuration(pose: Pose): number {
   return POSE_DURATION[pose] ?? 500;
 }
 
+/** Escala dos sprites v2: inteira de 1 a 4 (limita a memória do cache). */
+function v2Scale(s: number | undefined): number {
+  return Math.min(4, Math.max(1, Math.ceil((s ?? 2) - 0.01)));
+}
+
+function characterSpriteV2(req: CharacterFrameRequest): Sprite {
+  const pose = v2PoseOf(req.pose);
+  const n = V2_FRAMES[pose];
+  const frame = ((Math.floor(req.frame) % n) + n) % n;
+  const seated = isSeated(req.pose, req.seated);
+  const scale = v2Scale(req.scale);
+  const key = `${keyOf(req.appearance)}|${req.dir}|${req.pose}|${frame}|${req.held ?? 'none'}|${seated ? 1 : 0}|${req.costume ?? 'none'}|${scale}`;
+  return charCacheV2.get(key, () => ({ canvas: renderCharacterV2({ ...req, frame, seated }, scale), ax: V2_AX, ay: V2_AY, scale }));
+}
+
 export function characterSprite(req: CharacterFrameRequest): Sprite {
+  if (req.style === 'v2') return characterSpriteV2(req);
   const n = poseFrameCount(req.pose);
   const frame = ((Math.floor(req.frame) % n) + n) % n;
   const seated = isSeated(req.pose, req.seated);
@@ -108,8 +128,22 @@ export function characterSprite(req: CharacterFrameRequest): Sprite {
   return charCache.get(key, () => toSprite(renderCharacter({ ...req, frame, seated })));
 }
 
-export function avatarCanvas(seed: number, opts: { look?: 'f' | 'm'; sub?: boolean; scale?: number; parts?: AppearanceParts } = {}): HTMLCanvasElement {
+export function avatarCanvas(seed: number, opts: { look?: 'f' | 'm'; sub?: boolean; scale?: number; parts?: AppearanceParts; style?: CharacterStyle } = {}): HTMLCanvasElement {
   const scale = Math.max(1, Math.round(opts.scale ?? 3));
+  if (opts.style === 'v2') {
+    // busto (cabeça + ombros), o mesmo recorte do clássico: 20x20 a partir de (2, 2), desenhado em vetor na escala
+    const key = `v2|${seed}|${opts.look ?? '-'}|${opts.sub ? 1 : 0}|${scale}|${partsKey(opts.parts)}`;
+    return avatarCache.get(key, () => {
+      const out = document.createElement('canvas');
+      out.width = 20 * scale;
+      out.height = 20 * scale;
+      const g = out.getContext('2d') as CanvasRenderingContext2D;
+      g.scale(scale, scale);
+      g.translate(-2, -1);
+      drawCharacterV2(g, { appearance: appearanceFromSeedPure(seed, opts), dir: 'down', pose: 'stand', frame: 0 }, { shadow: false });
+      return out;
+    });
+  }
   const key = `${seed}|${opts.look ?? '-'}|${opts.sub ? 1 : 0}|${scale}|${partsKey(opts.parts)}`;
   return avatarCache.get(key, () => {
     const s = renderCharacter({ appearance: appearanceFromSeedPure(seed, opts), dir: 'down', pose: 'stand', frame: 0 });
