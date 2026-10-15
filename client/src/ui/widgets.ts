@@ -4,21 +4,36 @@ import type { AccountInfo, Activity, AgentInfo, AgentStatus, Provider } from '..
 import { h, setAttr, setHidden, setStyleVar, setText, setTitle, setVariant } from './dom';
 import { WORDMARK } from './icons';
 import { shellDoneKind, shellLine, shellStage, statusLabel, type ShellWait } from './model';
+import { providerMark } from './brand';
 import { accountChipLabel, accountProvider, fallbackShort, showsProviderTag } from './provider';
 import { tr } from '../../../shared/i18n';
 
 /**
- * Chip quadrado com a letra curta da conta ("C", "D") na cor da conta. Conta do Codex: o chip fica vazado (fundo
- * escuro, borda e letra na cor da conta, cantos em degrau): `data-provider="codex"`.
+ * Chip da conta: o logotipo da ferramenta (faísca do Claude, flor do Codex) num quadrado escuro com a borda na cor da
+ * conta e, nos tamanhos médio e grande, a letra curta da conta ("C", "D") num selinho no canto. A letra continua
+ * no texto do chip (leitores de tela e quem procura por ela). Conta do Codex: `data-provider="codex"`.
  */
 export function createAccountChip(size: 'sm' | 'md' | 'lg' = 'sm'): HTMLElement {
   return h('span', { class: `ui-acc-chip ui-acc-chip--${size}` });
 }
 
+/** Selinho da letra de cada chip (montado uma vez por ferramenta). */
+const chipKeys = new WeakMap<HTMLElement, HTMLElement>();
+
 /** `provider` = dica para quando a conta não está no snapshot (ex.: a sessão do histórico diz de que ferramenta é). */
 export function updateAccountChip(chip: HTMLElement, account: AccountInfo | undefined, fallbackId = '', provider?: Provider): void {
   const p = accountProvider(account, fallbackId, provider);
-  setText(chip, account?.short ?? fallbackShort(fallbackId, p));
+  let key = chipKeys.get(chip);
+  if (!key || chip.dataset.mark !== p) {
+    chip.dataset.mark = p;
+    const mark = h('span', { class: 'ui-acc-chip__mark' });
+    mark.innerHTML = providerMark(p);
+    key = h('span', { class: 'ui-acc-chip__key' });
+    while (chip.firstChild) chip.firstChild.remove();
+    chip.append(mark, key);
+    chipKeys.set(chip, key);
+  }
+  setText(key, account?.short ?? fallbackShort(fallbackId, p));
   setStyleVar(chip, '--acc', account?.color ?? '#8b98b3');
   setAttr(chip, 'data-provider', p === 'codex' ? 'codex' : null);
   const label = accountChipLabel(account, fallbackId, p);

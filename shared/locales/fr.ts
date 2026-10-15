@@ -2637,4 +2637,9 @@ export const FR: Readonly<Record<string, string>> = {
   "Falha ao ler a fábrica Faber: {0}": "Impossible de lire l’usine Faber : {0}",
   "✋ {0} aguarda você no {1} ({2}){3}": "✋ {0} vous attend à {1} ({2}){3}",
   "⛔ {0} bloqueada: {1}": "⛔ {0} bloquée : {1}",
+
+  // personagens (client/src/ui/settings.ts)
+  "Personagens": "Personnages",
+  "Traço suave": "Trait doux",
+  "Pixel art": "Pixel art",
 };

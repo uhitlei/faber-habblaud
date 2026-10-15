@@ -11,6 +11,8 @@
 
 <p align="center"><a href="README.md">English</a> · <a href="README.pt-BR.md">Português</a> · <a href="README.es.md">Español</a> · <b>Français</b></p>
 
+<p align="center"><sub>Fork de <a href="https://github.com/marmottajr/habblaud">Habblaud</a> de Márcio Junior (MIT), avec l’usine logicielle <a href="https://github.com/uhitlei/faber">Faber</a> dans le bureau.</sub></p>
+
 <p align="center">
   <img alt="Node.js 22.12+" src="https://img.shields.io/badge/node-%E2%89%A522.12-5fa04e?logo=node.js&logoColor=white" />
   <img alt="TypeScript" src="https://img.shields.io/badge/TypeScript-7-3178c6?logo=typescript&logoColor=white" />
@@ -138,7 +140,7 @@ l'immeuble ne garde pas de trous et rétrécit tout seul.
 ### 1. Téléchargez le projet
 
 ```bash
-git clone https://github.com/marmottajr/habblaud.git
+git clone https://github.com/uhitlei/faber-habblaud.git
 cd habblaud
 npm install
 ```
@@ -314,7 +316,7 @@ cookie en clair sur le réseau). En mode Node : `HABBLAUD_REMOTE_PORT` et `HABBL
 ### Mettre à jour
 
 La version utilisée apparaît dans la barre du haut, à côté de « Connecté », et dans **Réglages › À propos**. Toutes les
-6 heures, Habblaud vérifie sur GitHub si une nouvelle version est sortie (les [releases](https://github.com/marmottajr/habblaud/releases)
+6 heures, Habblaud vérifie sur GitHub si une nouvelle version est sortie (les [releases](https://github.com/uhitlei/faber-habblaud/releases)
 de ce dépôt). Si c'est le cas, le badge vert **Nouvelle version** remplace le numéro, avec une alerte et un point sur
 le bouton des réglages. Dans **À propos**, vous trouverez le lien vers ce qui a changé et le bouton **Vérifier
 maintenant** (les notes de chaque version sont aussi dans [`CHANGELOG.md`](CHANGELOG.md)). Pour mettre à jour :
@@ -352,8 +354,8 @@ npm run docker:up        # tira o container codetown e copia os dados do volume 
 - **Navigateur :** les préférences et les pièces passent aux nouvelles clés la première fois que la page s'ouvre.
 - **Variables :** les `CODETOWN_*` ne sont plus prises en compte ; renommez-les en `HABBLAUD_*` dans le `.env` (ex. : `HABBLAUD_BIND`). Le
   serveur et `docker:up` vous préviennent quand ils en trouvent une ancienne.
-- **Dépôt :** c'est désormais `github.com/marmottajr/habblaud` (GitHub redirige l'ancienne adresse). Pour mettre à jour le
-  clone : `git remote set-url origin https://github.com/marmottajr/habblaud.git`. Le dossier local peut garder son
+- **Dépôt :** c'est désormais `github.com/uhitlei/faber-habblaud` (GitHub redirige l'ancienne adresse). Pour mettre à jour le
+  clone : `git remote set-url origin https://github.com/uhitlei/faber-habblaud.git`. Le dossier local peut garder son
   ancien nom.
 - Les sauvegardes du `settings.json` faites avant le changement de nom gardent le nom `settings.json.codetown-backup-<data>`.
 
@@ -877,7 +879,7 @@ avec `no-new-privileges`. Les métadonnées des comptes (lettre, e-mail, organis
 - **Local uniquement, par défaut :** le serveur n'accepte que les connexions venant de l'ordinateur lui-même ; ouvrir
   l'accès au réseau local est facultatif. Il n'y a pas de télémétrie. Le seul appel externe est la vérification de
   nouvelle version : toutes les 6 heures, une requête anonyme, sans token, à l'API publique de GitHub
-  (`api.github.com/repos/marmottajr/habblaud/releases/latest`). Elle n'envoie rien sur vos sessions ; GitHub ne voit que
+  (`api.github.com/repos/uhitlei/faber-habblaud/releases/latest`). Elle n'envoie rien sur vos sessions ; GitHub ne voit que
   votre IP et la version utilisée, qui figure dans le `User-Agent`.
   `HABBLAUD_UPDATE_CHECK=0` désactive la requête.
   Le [téléphone avec connexion](#téléphone-avec-connexion-et-https-valider-les-demandes) aussi : il n'existe qu'après `npm run remote:setup`.

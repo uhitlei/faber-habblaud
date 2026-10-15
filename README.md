@@ -11,6 +11,8 @@
 
 <p align="center"><b>English</b> · <a href="README.pt-BR.md">Português</a> · <a href="README.es.md">Español</a> · <a href="README.fr.md">Français</a></p>
 
+<p align="center"><sub>Fork of <a href="https://github.com/marmottajr/habblaud">Habblaud</a> by Márcio Junior (MIT), with the <a href="https://github.com/uhitlei/faber">Faber</a> software factory in the office.</sub></p>
+
 <p align="center">
   <img alt="Node.js 22.12+" src="https://img.shields.io/badge/node-%E2%89%A522.12-5fa04e?logo=node.js&logoColor=white" />
   <img alt="TypeScript" src="https://img.shields.io/badge/TypeScript-7-3178c6?logo=typescript&logoColor=white" />
@@ -134,7 +136,7 @@ shrinks on its own.
 ### 1. Get the project
 
 ```bash
-git clone https://github.com/marmottajr/habblaud.git
+git clone https://github.com/uhitlei/faber-habblaud.git
 cd habblaud
 npm install
 ```
@@ -163,6 +165,18 @@ npm start
 Open **http://localhost:4747**. For development, use `npm run dev` (server + Vite with hot reload).
 
 Now open Claude Code in any project and watch your agent arrive by elevator. 🎉
+
+### All plugins at once
+
+To install everything this fork offers in one go — in Claude Code, the mod, answering permissions and sending
+messages from the office; in Codex, the hooks — run in the project folder:
+
+```bash
+npm run plugins:install
+```
+
+Everything comes from this folder, nothing is downloaded from GitHub. `npm run plugins:status` shows what is
+installed and `npm run plugins:uninstall` removes it all. In Codex, approve the new hooks in `/hooks` once.
 
 ### 3. Install the Habblaud mod in Claude Code (recommended)
 
@@ -300,7 +314,7 @@ in the clear on the network). In Node mode: `HABBLAUD_REMOTE_PORT` and `HABBLAUD
 ### Updating
 
 The version in use shows up in the top bar, next to "Connected", and in **Settings › About**. Every 6 hours
-Habblaud checks GitHub for a new version (the [releases](https://github.com/marmottajr/habblaud/releases)
+Habblaud checks GitHub for a new version (the [releases](https://github.com/uhitlei/faber-habblaud/releases)
 of this repository). When there is one, the green **New version** badge appears in place of the number, along with a notice and a dot on the
 settings button. **About** has the link to what changed and the **Check now** button (each version's notes
 are also in [`CHANGELOG.md`](CHANGELOG.md)). To update:
@@ -337,8 +351,8 @@ npm run docker:up        # tira o container codetown e copia os dados do volume 
 - **Browser:** preferences and coins move to the new keys the first time the page opens.
 - **Variables:** the `CODETOWN_*` ones no longer work; rename them to `HABBLAUD_*` in `.env` (e.g. `HABBLAUD_BIND`). The
   server and `docker:up` warn you when they find an old one.
-- **Repository:** it's now `github.com/marmottajr/habblaud` (GitHub redirects the old address). To fix your
-  clone: `git remote set-url origin https://github.com/marmottajr/habblaud.git`. The local folder can keep its
+- **Repository:** it's now `github.com/uhitlei/faber-habblaud` (GitHub redirects the old address). To fix your
+  clone: `git remote set-url origin https://github.com/uhitlei/faber-habblaud.git`. The local folder can keep its
   old name.
 - `settings.json` backups made before the switch keep the name `settings.json.codetown-backup-<data>`.
 
@@ -855,7 +869,7 @@ metadata (letter, email, organization) is read on the host by `docker:up` and pa
   (`habblaud-mensagens`) is separate precisely because it acts: it types into the session what you sent from the office.
 - **Local only, by default:** the server only accepts connections from the computer it runs on; opening it to the local network is optional.
   There's no telemetry. The only external call is the new-version check: every 6 hours, an anonymous request,
-  with no token, to the public GitHub API (`api.github.com/repos/marmottajr/habblaud/releases/latest`). It doesn't send anything
+  with no token, to the public GitHub API (`api.github.com/repos/uhitlei/faber-habblaud/releases/latest`). It doesn't send anything
   about your sessions; GitHub only sees your IP and the version in use, which goes in the `User-Agent`.
   `HABBLAUD_UPDATE_CHECK=0` turns off the request.
   So is the [phone with login](#phone-with-login-and-https-approving-requests), which only exists after `npm run remote:setup`.

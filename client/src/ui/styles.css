@@ -365,6 +365,75 @@
   --step: 3px;
 }
 
+/* Logotipo da ferramenta no chip (ui/brand.ts): fundo escuro, borda na cor da conta, letra num selinho no canto.
+   Vale sobre o chip de letra e o "vazado" do Codex acima. */
+.ui-acc-chip[data-mark] {
+  position: relative;
+  border-radius: 5px;
+  clip-path: none;
+  background: #1b1f2b;
+  box-shadow:
+    inset 0 0 0 1.5px var(--acc),
+    inset 0 -2px 0 rgba(0, 0, 0, 0.3);
+}
+
+.ui-acc-chip[data-mark='claude'] {
+  background: #2a211d;
+}
+
+.ui-acc-chip__mark {
+  display: grid;
+  place-items: center;
+  width: 72%;
+  height: 72%;
+}
+
+.ui-acc-chip__mark svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+/* A letra fica só no texto (pequeno demais para ler) no chip pequeno. */
+.ui-acc-chip__key {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+}
+
+.ui-acc-chip--md .ui-acc-chip__key,
+.ui-acc-chip--lg .ui-acc-chip__key {
+  position: absolute;
+  right: -3px;
+  bottom: -3px;
+  display: grid;
+  place-items: center;
+  width: auto;
+  min-width: 11px;
+  height: 11px;
+  padding: 0 2px;
+  overflow: visible;
+  clip-path: none;
+  border-radius: 3px;
+  background: var(--acc);
+  color: #12151d;
+  font: 800 8px/1 var(--font-ui);
+  box-shadow: 0 0 0 1.5px #12151d;
+}
+
+.ui-acc-chip--lg .ui-acc-chip__key {
+  min-width: 14px;
+  height: 14px;
+  font-size: 10px;
+}
+
+.ui-acc-chip--lg .ui-acc-chip__mark {
+  width: 64%;
+  height: 64%;
+}
+
 /* Selo de texto "Codex" ao lado do nome da conta (fonte do sistema: na Pixelify o "C" parece "O"). */
 .ui-prov {
   display: inline-flex;

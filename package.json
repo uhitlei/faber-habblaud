@@ -6,9 +6,9 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/marmottajr/habblaud.git"
+    "url": "git+https://github.com/uhitlei/faber-habblaud.git"
   },
-  "homepage": "https://github.com/marmottajr/habblaud#readme",
+  "homepage": "https://github.com/uhitlei/faber-habblaud#readme",
   "type": "module",
   "engines": {
     "node": ">=22.12"
@@ -34,6 +34,9 @@
     "hooks:install": "tsx scripts/hooks-install.ts install",
     "hooks:uninstall": "tsx scripts/hooks-install.ts uninstall",
     "hooks:status": "tsx scripts/hooks-install.ts status",
+    "plugins:install": "tsx scripts/mod-install.ts install && tsx scripts/codex-install.ts install",
+    "plugins:uninstall": "tsx scripts/mod-install.ts uninstall && tsx scripts/codex-install.ts uninstall",
+    "plugins:status": "tsx scripts/mod-install.ts status && tsx scripts/codex-install.ts status",
     "mod:install": "tsx scripts/mod-install.ts install",
     "mod:uninstall": "tsx scripts/mod-install.ts uninstall",
     "mod:status": "tsx scripts/mod-install.ts status",

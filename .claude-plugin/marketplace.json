@@ -1,6 +1,6 @@
 {
   "name": "habblaud",
-  "owner": { "name": "Márcio Junior", "url": "https://github.com/marmottajr" },
+  "owner": { "name": "Will", "url": "https://github.com/uhitlei" },
   "description": "Plugins do Habblaud, o escritório virtual em pixel art das suas sessões do Claude Code.",
   "version": "0.11.0",
   "plugins": [
